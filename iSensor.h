@@ -1,25 +1,26 @@
 #pragma once
-
-#include "message.h"
+#include <ArduinoJson.h>
 
 class ISensor {
   private:
-    void (*onData)(Message);
+    JsonObject *sensorBuffer;
   protected:
-    void OnData(float value) {
-      if(onData)
-        onData(Message(Name, value));
+    void (*OnData)(const char* name, float value);
+    float GetSensorData(const char* name) {
+      return (*sensorBuffer)[name];
     }
-    String Name;
   public:
-    ISensor(String name) {
-      Name = name;
-    }
 
     virtual void Setup() = 0;
+    virtual void Setup(JsonObject *sensorBuffer) {
+      Setup();
+    }
     virtual void Loop() = 0;
 
-    void SetCallback(void (*callback)(Message)) {
-      onData = callback;
+    void SetSensorBuffer(JsonObject *buffer) {
+      sensorBuffer = buffer;
+    }
+    void SetCallback(void (*callback)(const char* name, float value)) {
+      OnData = callback;
     }
 };

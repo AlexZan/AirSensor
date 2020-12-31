@@ -1,15 +1,21 @@
-#include "messenger.h"
 #include <Wire.h>
-#include "co2Sensor.h"
-#include "iSensor.h"
-#include "message.h"
+#include <ArduinoJson.h>
 
-#define BAUD 115200
-#define DELAY 2000
+#include "config.h"
+#include "messenger.h"
+#include "iSensor.h"
+#include "co2Sensor.h"
+#include "gasSensor.h"
+#include "sgp30Sensor.h"
+#include "pmSensor.h"
+
+
+
+StaticJsonDocument<400> doc;
+JsonObject obj = doc.to<JsonObject>();
 
 void setup() {
   Serial.begin(BAUD);
-
   while (!Serial);
   delay(1000);
   MessengerSetup();
@@ -21,16 +27,12 @@ void loop() {
   MessengerLoop();
 }
 
-
-
-CO2Sensor cO2Sensor = CO2Sensor("co2Plus");
-
 ISensor* sensors[] = {
-  &cO2Sensor
+  new CO2Sensor(), new GasSensor(), new SGP30Sensor(), new PMSensor()
 };
 
-void onSensorData(Message data) {
-  MessengerSensorHandler(data);
+void onSensorData(const char* name, float value) {
+  doc[name] = value;
 }
 
 void SensorsSetup() {
@@ -38,8 +40,8 @@ void SensorsSetup() {
   for (uint8_t i = 0; i < sizeof(sensors) / sizeof(sensors[0]); i++) {
     sensors[i]->Setup();
     sensors[i]->SetCallback(onSensorData);
+    sensors[i]->SetSensorBuffer(&obj);
   }
-  delay(DELAY);
 }
 
 
@@ -47,4 +49,7 @@ void SensorsLoop() {
   for (uint8_t i = 0; i < sizeof(sensors) / sizeof(sensors[0]); i++) {
     sensors[i]->Loop();
   }
+  MessengerSend(doc);
+
+  delay(DELAY);
 }
